@@ -16,4 +16,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push https://sourabh00809:$HF_TOKEN@huggingface.co/spaces/sourabh00809/pavement_simulator master
+          git push https://sourabh00809:$HF_TOKEN@huggingface.co/spaces/sourabh00809/pavement_simulator master:main
