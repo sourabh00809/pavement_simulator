@@ -3,9 +3,6 @@ import csv
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import pandas as pd
 
 
@@ -451,114 +448,6 @@ class PavementSimulator:
             print(f"Samples = {n}")
 
         return self.results
-
-    def plot_time_series(self):
-        if not self.results:
-            raise RuntimeError("Run the simulation first.")
-
-        t = self.results['t']
-
-        fig, axes = plt.subplots(4, 1, figsize=(12, 14), sharex=True)
-
-        axes[0].plot(t, self.results['T_air'], label="T_air")
-        axes[0].plot(t, self.results['T_top'], label="T_top")
-        axes[0].plot(t, self.results['T_bottom'], label="T_bottom")
-        axes[0].legend()
-        axes[0].set_ylabel("Temp (C)")
-        axes[0].set_title("Temperature")
-
-        axes[1].plot(t, self.results['RH'], label="RH (air)")
-        axes[1].plot(t, self.results['M_top'], label="M_top")
-        axes[1].plot(t, self.results['M_bottom'], label="M_bottom")
-        axes[1].set_ylabel("RH / Moisture")
-        axes[1].set_title("Relative Humidity & Moisture Response")
-        axes[1].legend(loc='upper left')
-
-        ax2 = axes[1].twinx()
-        rain = self.results.get('rain', np.zeros_like(t))
-        precip = self.results.get('precip', np.zeros_like(t))
-
-        if np.any(precip > 0):
-            ax2.bar(t, precip, width=max(0.5, (t[1]-t[0]) * 0.6), alpha=0.25, label="precipitation", align='center')
-        if np.any(rain > 0):
-            ax2.bar(t, rain, width=max(0.5, (t[1]-t[0]) * 0.3), alpha=0.4, label="rain", align='center')
-        ax2.set_ylabel("Precip (mm)")
-
-        axes[2].plot(t, self.results['loads_N'], label="Vehicle Load (N)")
-        axes[2].set_ylabel("Load (N)")
-        axes[2].set_title("Vehicle Load History")
-        axes[2].legend()
-
-        axes[3].plot(t, self.results['sigma_total'], label="sigma_total")
-        axes[3].plot(t, self.results['sigma_load_only'], '--', label="sigma_load_tensile_only")
-        axes[3].plot(t, self.results['sigma_thermal'], ':', label="sigma_thermal")
-        axes[3].plot(t, self.results['sigma_moisture'], '-.', label="sigma_moisture")
-        axes[3].set_ylabel("Stress (MPa)")
-        axes[3].set_xlabel("Time (days)")
-        axes[3].legend()
-        axes[3].set_title("Stress Components and Total Stress")
-
-        plt.tight_layout()
-        return fig
-
-    def plot_temperature(self):
-        if not self.results:
-            raise RuntimeError("Run the simulation first.")
-        t = self.results['t']
-        fig, ax = plt.subplots(figsize=(10, 4.5))
-        ax.plot(t, self.results['T_air'], label="T_air")
-        ax.plot(t, self.results['T_top'], label="T_top")
-        ax.plot(t, self.results['T_bottom'], label="T_bottom")
-        ax.set_ylabel("Temperature (C)")
-        ax.set_xlabel("Time (days)")
-        ax.set_title("Temperature Time Series")
-        ax.legend()
-        plt.tight_layout()
-        return fig
-
-    def plot_moisture(self):
-        if not self.results:
-            raise RuntimeError("Run the simulation first.")
-        t = self.results['t']
-        fig, ax = plt.subplots(figsize=(10, 4.5))
-        ax.plot(t, self.results['RH'], label="RH (air)")
-        ax.plot(t, self.results['M_top'], label="M_top")
-        ax.plot(t, self.results['M_bottom'], label="M_bottom")
-        ax.set_ylabel("RH / Moisture")
-        ax.set_xlabel("Time (days)")
-        ax.set_title("Moisture / Relative Humidity")
-        ax.legend()
-        plt.tight_layout()
-        return fig
-
-    def plot_load(self):
-        if not self.results:
-            raise RuntimeError("Run the simulation first.")
-        t = self.results['t']
-        fig, ax = plt.subplots(figsize=(10, 4.5))
-        ax.plot(t, self.results['loads_N'], label="Vehicle Load (N)")
-        ax.set_ylabel("Load (N)")
-        ax.set_xlabel("Time (days)")
-        ax.set_title("Vehicle Load History")
-        ax.legend()
-        plt.tight_layout()
-        return fig
-
-    def plot_stress(self):
-        if not self.results:
-            raise RuntimeError("Run the simulation first.")
-        t = self.results['t']
-        fig, ax = plt.subplots(figsize=(10, 4.5))
-        ax.plot(t, self.results['sigma_total'], label="sigma_total")
-        ax.plot(t, self.results['sigma_load_only'], '--', label="sigma_load_tensile_only")
-        ax.plot(t, self.results['sigma_thermal'], ':', label="sigma_thermal")
-        ax.plot(t, self.results['sigma_moisture'], '-.', label="sigma_moisture")
-        ax.set_ylabel("Stress (MPa)")
-        ax.set_xlabel("Time (days)")
-        ax.set_title("Stress Components and Total Stress")
-        ax.legend()
-        plt.tight_layout()
-        return fig
 
     def export_cycles_csv(self, filename):
         if not self.results:
