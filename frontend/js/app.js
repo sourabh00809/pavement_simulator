@@ -228,8 +228,7 @@ function renderResults(data) {
   // Enable export
   exportBtn.disabled = false;
 
-  // Switch to first tab
-  tabBar.querySelector(".tab").click();
+  // First tab (timeseries) is already active in HTML
 }
 
 /* ─── Render Plotly Chart ────────────────────── */
