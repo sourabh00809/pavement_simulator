@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pavement Fatigue Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header class="header">
+    <div class="header-inner">
+      <div>
+        <h1 class="header-title">Pavement Fatigue Simulator</h1>
+        <p class="header-sub">Rainflow-based fatigue analysis of rigid pavements</p>
+      </div>
+      <div class="header-badge">v1.0</div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="params-grid">
+      <!-- Column 1: Slab + Material -->
+      <div class="params-col">
+        <div class="card">
+          <div class="card-title">Slab Geometry</div>
+          <div class="card-body">
+            <div class="field-row two">
+              <div class="field">
+                <label>Length <span class="unit">(m)</span></label>
+                <input type="number" id="slab_length" value="6.0" step="0.1" min="0.1">
+              </div>
+              <div class="field">
+                <label>Width <span class="unit">(m)</span></label>
+                <input type="number" id="slab_width" value="3.5" step="0.1" min="0.1">
+              </div>
+            </div>
+            <div class="field-row two">
+              <div class="field">
+                <label>Thickness <span class="unit">(m)</span></label>
+                <input type="number" id="h" value="0.35" step="0.01" min="0.05">
+              </div>
+              <div class="field">
+                <label>Contact Radius <span class="unit">(m)</span></label>
+                <input type="number" id="contact_radius" value="0.12" step="0.01" min="0.01">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Material Properties</div>
+          <div class="card-body">
+            <div class="field-row two">
+              <div class="field">
+                <label>Elastic Modulus E <span class="unit">(Pa)</span></label>
+                <input type="number" id="E" value="30000000000" step="1e9">
+              </div>
+              <div class="field">
+                <label>Subgrade Modulus k <span class="unit">(Pa/m)</span></label>
+                <input type="number" id="k" value="150000" step="10000">
+              </div>
+            </div>
+            <div class="field-row two">
+              <div class="field">
+                <label>Poisson Ratio</label>
+                <input type="number" id="nu" value="0.15" step="0.01" min="0.05" max="0.5">
+              </div>
+              <div class="field">
+                <label>CTE alpha <span class="unit">(1/C)</span></label>
+                <input type="number" id="alpha" value="0.00001" step="1e-6">
+              </div>
+            </div>
+            <div class="field-row two">
+              <div class="field">
+                <label>Shrinkage Coeff beta</label>
+                <input type="number" id="beta_shrinkage" value="0.0003" step="0.00001">
+              </div>
+              <div class="field"></div>
+            </div>
+          </div>
+        </div>
+
+        <details class="card details-card">
+          <summary class="card-title" style="cursor:pointer">Fatigue Parameters <span class="badge">Advanced</span></summary>
+          <div class="card-body">
+            <div class="field-row two">
+              <div class="field">
+                <label>S-N Coefficient A</label>
+                <input type="number" id="fatigue_A" value="100000000" step="1e7">
+              </div>
+              <div class="field">
+                <label>S-N Exponent m</label>
+                <input type="number" id="fatigue_m" value="6.0" step="0.5">
+              </div>
+            </div>
+            <div class="field-row two">
+              <div class="field">
+                <label>Reference Stress <span class="unit">(MPa)</span></label>
+                <input type="number" id="fatigue_sigma_ref" value="1.0" step="0.1">
+              </div>
+              <div class="field"></div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- Column 2: Weather + Load -->
+      <div class="params-col">
+        <div class="card">
+          <div class="card-title">Weather Source</div>
+          <div class="card-body">
+            <div class="radio-group" id="weather_mode_group">
+              <label class="radio-pill active"><input type="radio" name="weather_mode" value="synthetic" checked> Synthetic</label>
+              <label class="radio-pill"><input type="radio" name="weather_mode" value="csv"> Upload CSV</label>
+              <label class="radio-pill"><input type="radio" name="weather_mode" value="openmeteo"> Open-Meteo API</label>
+            </div>
+
+            <div id="weather_synthetic" class="weather-conditional">
+              <div class="field-row two">
+                <div class="field">
+                  <label>Simulation Days</label>
+                  <input type="number" id="sim_days" value="1095" step="30" min="30">
+                </div>
+                <div class="field">
+                  <label>Samples per Day</label>
+                  <input type="number" id="daily_steps" value="1" step="1" min="1">
+                </div>
+              </div>
+              <div class="field-row two">
+                <div class="field">
+                  <label>Mean Temp <span class="unit">(C)</span></label>
+                  <input type="number" id="mean_temp" value="25" step="1">
+                </div>
+                <div class="field">
+                  <label>Temp Amplitude</label>
+                  <input type="number" id="amp_temp" value="12" step="1">
+                </div>
+              </div>
+              <div class="field-row two">
+                <div class="field">
+                  <label>Mean RH</label>
+                  <input type="number" id="mean_RH" value="0.55" step="0.05" min="0" max="1">
+                </div>
+                <div class="field">
+                  <label>RH Amplitude</label>
+                  <input type="number" id="amp_RH" value="0.18" step="0.01" min="0" max="0.5">
+                </div>
+              </div>
+            </div>
+
+            <div id="weather_csv" class="weather-conditional hidden">
+              <div class="file-upload" id="weather_csv_upload">
+                <input type="file" accept=".csv" id="weather_csv_input">
+                <label for="weather_csv_input" class="file-label">
+                  <span class="file-icon">+</span>
+                  <span class="file-text">Choose CSV file</span>
+                </label>
+                <span class="file-name" id="weather_csv_name"></span>
+              </div>
+            </div>
+
+            <div id="weather_openmeteo" class="weather-conditional hidden">
+              <div class="field-row two">
+                <div class="field">
+                  <label>Latitude</label>
+                  <input type="number" id="lat" value="28.7041" step="0.01" min="-90" max="90">
+                </div>
+                <div class="field">
+                  <label>Longitude</label>
+                  <input type="number" id="lon" value="77.1025" step="0.01" min="-180" max="180">
+                </div>
+              </div>
+              <div class="field-row two">
+                <div class="field">
+                  <label>Days</label>
+                  <input type="number" id="days" value="365" step="30" min="1" max="3650">
+                </div>
+                <div class="field"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Load Source</div>
+          <div class="card-body">
+            <div class="radio-group" id="load_mode_group">
+              <label class="radio-pill active"><input type="radio" name="load_mode" value="constant" checked> Constant Load</label>
+              <label class="radio-pill"><input type="radio" name="load_mode" value="csv"> Upload CSV</label>
+            </div>
+
+            <div id="load_constant" class="load-conditional">
+              <div class="field-row two">
+                <div class="field">
+                  <label>Wheel Load <span class="unit">(N)</span></label>
+                  <input type="number" id="wheel_load" value="200000" step="10000" min="0">
+                </div>
+                <div class="field"></div>
+              </div>
+            </div>
+
+            <div id="load_csv_section" class="load-conditional hidden">
+              <div class="file-upload" id="load_csv_upload">
+                <input type="file" accept=".csv" id="load_csv_input">
+                <label for="load_csv_input" class="file-label">
+                  <span class="file-icon">+</span>
+                  <span class="file-text">Choose CSV file</span>
+                </label>
+                <span class="file-name" id="load_csv_name"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 3: Controls -->
+      <div class="params-col">
+        <div class="card controls-card">
+          <div class="card-title">Controls</div>
+          <div class="card-body">
+            <button id="runBtn" class="btn-primary">
+              <span class="btn-icon">&#9654;</span>
+              Run Simulation
+            </button>
+
+            <div class="status-panel">
+              <div class="status-row">
+                <span class="status-label">Status</span>
+                <span class="status-value" id="statusText">Ready</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Samples</span>
+                <span class="status-value mono" id="samplesText">--</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Total Damage</span>
+                <span class="status-value mono" id="damageText">--</span>
+              </div>
+            </div>
+
+            <div id="errorBox" class="error-box hidden"></div>
+          </div>
+        </div>
+
+        <button id="exportBtn" class="btn-secondary" disabled>
+          Export Cycles CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <section class="results">
+      <div class="tab-bar" id="tabBar">
+        <button class="tab active" data-tab="timeseries">Time Series</button>
+        <button class="tab" data-tab="temperature">Temperature</button>
+        <button class="tab" data-tab="moisture">Moisture</button>
+        <button class="tab" data-tab="load">Load</button>
+        <button class="tab" data-tab="stress">Stress</button>
+        <button class="tab" data-tab="cycles">Cycles</button>
+        <button class="tab" data-tab="summary">Summary</button>
+      </div>
+
+      <div class="tab-content active" id="tab-timeseries">
+        <div id="chart-timeseries" class="chart"></div>
+      </div>
+      <div class="tab-content" id="tab-temperature">
+        <div id="chart-temperature" class="chart"></div>
+      </div>
+      <div class="tab-content" id="tab-moisture">
+        <div id="chart-moisture" class="chart"></div>
+      </div>
+      <div class="tab-content" id="tab-load">
+        <div id="chart-load" class="chart"></div>
+      </div>
+      <div class="tab-content" id="tab-stress">
+        <div id="chart-stress" class="chart"></div>
+      </div>
+      <div class="tab-content" id="tab-cycles">
+        <div class="table-wrap">
+          <table class="data-table" id="cyclesTable">
+            <thead>
+              <tr>
+                <th>Range (MPa)</th><th>Mean (MPa)</th>
+                <th>Count</th><th>Amplitude (MPa)</th>
+                <th>Nf</th><th>Damage</th>
+              </tr>
+            </thead>
+            <tbody id="cyclesBody">
+              <tr><td colspan="6" class="empty">Run a simulation to see cycle data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-summary">
+        <div class="summary-grid" id="summaryGrid">
+          <p class="empty">Run a simulation to see summary.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Pavement Fatigue Simulator v1.0</span>
+    <span class="footer-divider">|</span>
+    <span>Rainflow-based analysis</span>
+  </footer>
+</div>
+
+<div id="loader" class="loader-overlay hidden">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">Running simulation...</div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
