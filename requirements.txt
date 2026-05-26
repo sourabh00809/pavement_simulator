@@ -1,0 +1,5 @@
+numpy
+pandas
+matplotlib
+gradio>=5.0
+requests
