@@ -10,8 +10,6 @@ import pandas as pd
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from plotly.utils import PlotlyJSONEncoder
-
 from src.engine import (
     FatigueSN,
     PavementSimulator,
@@ -37,10 +35,16 @@ COLORS = {
 }
 
 
+def _to_lists(r):
+    """Convert all numpy arrays in a dict to lists for JSON serialization."""
+    return {k: v.tolist() if isinstance(v, np.ndarray) else v for k, v in r.items()}
+
+
 def _ts_fig(r):
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
+    r = _to_lists(r)
     t = r["t"]
     fig = make_subplots(rows=4, cols=1, shared_xaxes=True,
                         vertical_spacing=0.06)
@@ -84,6 +88,7 @@ def _ts_fig(r):
 def _single_fig(r, key, title, ylabel, traces):
     import plotly.graph_objects as go
 
+    r = _to_lists(r)
     t = r["t"]
     fig = go.Figure()
     for k, name, color, dash in traces:
@@ -100,7 +105,7 @@ def _single_fig(r, key, title, ylabel, traces):
 
 
 def _to_json(fig):
-    return json.loads(json.dumps(fig, cls=PlotlyJSONEncoder))
+    return fig.to_dict()
 
 
 def _build_plots(res):
@@ -126,6 +131,19 @@ def _build_plots(res):
              ("sigma_thermal", "sigma_thermal", COLORS["orange"], "dot"),
              ("sigma_moisture", "sigma_moisture", COLORS["green"], "dashdot")])),
     }
+
+
+# ─── JSON encoder for response ────────────────
+
+class _NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        return super().default(obj)
 
 
 # ─── API ──────────────────────────────────────
@@ -226,13 +244,15 @@ async def simulate(
             "timeSpan": float(res["t"][-1]),
         }
 
-        return {"ok": True, "plots": plots, "cycles": cycles,
-                "summary": summary}
+        body = json.dumps({"ok": True, "plots": plots, "cycles": cycles,
+                           "summary": summary}, cls=_NumpyEncoder)
+        return Response(content=body, media_type="application/json")
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"ok": False, "error": str(e)}
+        body = json.dumps({"ok": False, "error": str(e)})
+        return Response(content=body, media_type="application/json")
 
 
 @app.post("/api/export")
