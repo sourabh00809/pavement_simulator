@@ -74,13 +74,10 @@ function chartOpts(yLabel) {
   return {
     responsive: true,
     maintainAspectRatio: false,
+    animation: false,
     interaction: { mode: "nearest", axis: "x", intersect: false },
     plugins: {
       legend: { position: "top", labels: { boxWidth: 12, padding: 8, font: { size: 11 } } },
-      zoom: {
-        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: true } },
-        pan: { enabled: true, mode: "x" },
-      },
     },
     scales: {
       x: { title: { display: true, text: "Time (days)", font: { size: 11 } }, tick: { font: { size: 10 } } },

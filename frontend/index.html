@@ -265,23 +265,23 @@
 
       <div class="tab-content active" id="tab-timeseries">
         <div class="chart-grid">
-          <div class="chart-panel"><div id="chart-ts-temp" class="chart"></div></div>
-          <div class="chart-panel"><div id="chart-ts-moist" class="chart"></div></div>
-          <div class="chart-panel"><div id="chart-ts-load" class="chart"></div></div>
-          <div class="chart-panel"><div id="chart-ts-stress" class="chart"></div></div>
+          <div class="chart-panel"><canvas id="chart-ts-temp" class="chart"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-ts-moist" class="chart"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-ts-load" class="chart"></canvas></div>
+          <div class="chart-panel"><canvas id="chart-ts-stress" class="chart"></canvas></div>
         </div>
       </div>
       <div class="tab-content" id="tab-temperature">
-        <div id="chart-temperature" class="chart single-chart"></div>
+        <canvas id="chart-temperature" class="chart single-chart"></canvas>
       </div>
       <div class="tab-content" id="tab-moisture">
-        <div id="chart-moisture" class="chart single-chart"></div>
+        <canvas id="chart-moisture" class="chart single-chart"></canvas>
       </div>
       <div class="tab-content" id="tab-load">
-        <div id="chart-load" class="chart single-chart"></div>
+        <canvas id="chart-load" class="chart single-chart"></canvas>
       </div>
       <div class="tab-content" id="tab-stress">
-        <div id="chart-stress" class="chart single-chart"></div>
+        <canvas id="chart-stress" class="chart single-chart"></canvas>
       </div>
       <div class="tab-content" id="tab-cycles">
         <div class="table-wrap">
@@ -320,7 +320,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
 <script src="js/app.js?v=2"></script>
 </body>
 </html>
