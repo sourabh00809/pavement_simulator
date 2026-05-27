@@ -264,19 +264,24 @@
       </div>
 
       <div class="tab-content active" id="tab-timeseries">
-        <div id="chart-timeseries" class="chart"></div>
+        <div class="chart-grid">
+          <div class="chart-panel"><div id="chart-ts-temp" class="chart"></div></div>
+          <div class="chart-panel"><div id="chart-ts-moist" class="chart"></div></div>
+          <div class="chart-panel"><div id="chart-ts-load" class="chart"></div></div>
+          <div class="chart-panel"><div id="chart-ts-stress" class="chart"></div></div>
+        </div>
       </div>
       <div class="tab-content" id="tab-temperature">
-        <div id="chart-temperature" class="chart"></div>
+        <div id="chart-temperature" class="chart single-chart"></div>
       </div>
       <div class="tab-content" id="tab-moisture">
-        <div id="chart-moisture" class="chart"></div>
+        <div id="chart-moisture" class="chart single-chart"></div>
       </div>
       <div class="tab-content" id="tab-load">
-        <div id="chart-load" class="chart"></div>
+        <div id="chart-load" class="chart single-chart"></div>
       </div>
       <div class="tab-content" id="tab-stress">
-        <div id="chart-stress" class="chart"></div>
+        <div id="chart-stress" class="chart single-chart"></div>
       </div>
       <div class="tab-content" id="tab-cycles">
         <div class="table-wrap">
@@ -314,7 +319,8 @@
   <div class="loader-text">Running simulation...</div>
 </div>
 
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

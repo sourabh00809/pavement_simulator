@@ -1,9 +1,7 @@
-/* ─── State ──────────────────────────────────── */
 let simData = null;
 let isLoading = false;
-let renderedTabs = {};
+let chartInstances = {};
 
-/* ─── DOM refs ───────────────────────────────── */
 const $ = (id) => document.getElementById(id);
 const runBtn = $("runBtn");
 const exportBtn = $("exportBtn");
@@ -14,15 +12,11 @@ const damageText = $("damageText");
 const errorBox = $("errorBox");
 const tabBar = $("tabBar");
 
-const TAB_CHART_MAP = {
-  timeseries: "chart-timeseries",
-  temperature: "chart-temperature",
-  moisture: "chart-moisture",
-  load: "chart-load",
-  stress: "chart-stress",
-};
+const TAB_IDS = ["timeseries", "temperature", "moisture", "load", "stress", "cycles", "summary"];
 
-/* ─── Radio pill toggle ─────────────────────── */
+// Subplot chart IDs for the time series tab
+const TS_CHARTS = { temperature: "chart-ts-temp", moisture: "chart-ts-moist", load: "chart-ts-load", stress: "chart-ts-stress" };
+
 document.querySelectorAll(".radio-group").forEach((group) => {
   group.addEventListener("change", (e) => {
     if (e.target.type !== "radio") return;
@@ -32,7 +26,6 @@ document.querySelectorAll(".radio-group").forEach((group) => {
   });
 });
 
-/* ─── Weather mode toggle ───────────────────── */
 document.querySelectorAll('[name="weather_mode"]').forEach((radio) => {
   radio.addEventListener("change", () => {
     const val = document.querySelector('[name="weather_mode"]:checked').value;
@@ -42,7 +35,6 @@ document.querySelectorAll('[name="weather_mode"]').forEach((radio) => {
   });
 });
 
-/* ─── Load mode toggle ──────────────────────── */
 document.querySelectorAll('[name="load_mode"]').forEach((radio) => {
   radio.addEventListener("change", () => {
     const val = document.querySelector('[name="load_mode"]:checked').value;
@@ -51,7 +43,6 @@ document.querySelectorAll('[name="load_mode"]').forEach((radio) => {
   });
 });
 
-/* ─── File upload display ────────────────────── */
 $("weather_csv_input").addEventListener("change", function () {
   $("weather_csv_name").textContent = this.files[0] ? this.files[0].name : "";
 });
@@ -59,7 +50,6 @@ $("load_csv_input").addEventListener("change", function () {
   $("load_csv_name").textContent = this.files[0] ? this.files[0].name : "";
 });
 
-/* ─── Tab switching ──────────────────────────── */
 tabBar.addEventListener("click", (e) => {
   const tab = e.target.closest(".tab");
   if (!tab) return;
@@ -73,23 +63,75 @@ tabBar.addEventListener("click", (e) => {
   const target = $("tab-" + tabName);
   if (target) target.classList.add("active");
 
-  // Render chart lazily if not yet rendered
-  const chartId = TAB_CHART_MAP[tabName];
-  const chartDiv = $(chartId);
-  if (chartDiv && simData && simData.plots && simData.plots[tabName]) {
-    if (!renderedTabs[tabName]) {
-      Plotly.newPlot(chartDiv, simData.plots[tabName].data, simData.plots[tabName].layout, {
-        displaylogo: false,
-        modeBarButtonsToRemove: ["lasso2d", "select2d"],
-      });
-      renderedTabs[tabName] = true;
-    } else {
-      Plotly.Plots.resize(chartDiv);
-    }
+  if (tabName === "timeseries" && simData) {
+    renderTSSubplots(simData.charts.timeSeries);
+  } else if (["temperature", "moisture", "load", "stress"].includes(tabName) && simData) {
+    renderSingleChart(tabName, simData.charts[tabName]);
   }
 });
 
-/* ─── Run Simulation ─────────────────────────── */
+function chartOpts(yLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "nearest", axis: "x", intersect: false },
+    plugins: {
+      legend: { position: "top", labels: { boxWidth: 12, padding: 8, font: { size: 11 } } },
+      zoom: {
+        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: true } },
+        pan: { enabled: true, mode: "x" },
+      },
+    },
+    scales: {
+      x: { title: { display: true, text: "Time (days)", font: { size: 11 } }, tick: { font: { size: 10 } } },
+      y: { title: { display: true, text: yLabel, font: { size: 11 } }, tick: { font: { size: 10 } } },
+    },
+  };
+}
+
+function destroyChart(id) {
+  if (chartInstances[id]) {
+    chartInstances[id].destroy();
+    delete chartInstances[id];
+  }
+}
+
+function createChart(canvasId, data, yLabel) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: "line",
+    data: data,
+    options: chartOpts(yLabel),
+  });
+}
+
+function renderTSSubplots(subplots) {
+  if (!subplots) return;
+  const labels = {
+    temperature: "Temp (C)",
+    moisture: "Moisture",
+    load: "Load (N)",
+    stress: "Stress (MPa)",
+  };
+  Object.keys(subplots).forEach((key) => {
+    const id = TS_CHARTS[key];
+    if (id) createChart(id, subplots[key], labels[key]);
+  });
+}
+
+function renderSingleChart(tabName, data) {
+  const labels = {
+    temperature: "Temp (C)",
+    moisture: "Moisture",
+    load: "Load (N)",
+    stress: "Stress (MPa)",
+  };
+  const id = "chart-" + tabName;
+  createChart(id, data, labels[tabName] || "");
+}
+
 runBtn.addEventListener("click", async () => {
   if (isLoading) return;
   isLoading = true;
@@ -99,69 +141,63 @@ runBtn.addEventListener("click", async () => {
   errorBox.textContent = "";
 
   try {
-    const formData = new FormData();
+    const fd = new FormData();
 
-    formData.append("slab_length", $("slab_length").value);
-    formData.append("slab_width", $("slab_width").value);
-    formData.append("h", $("h").value);
-    formData.append("contact_radius", $("contact_radius").value);
+    fd.append("slab_length", $("slab_length").value);
+    fd.append("slab_width", $("slab_width").value);
+    fd.append("h", $("h").value);
+    fd.append("contact_radius", $("contact_radius").value);
 
-    formData.append("E", $("E").value);
-    formData.append("k", $("k").value);
-    formData.append("nu", $("nu").value);
-    formData.append("alpha", $("alpha").value);
-    formData.append("beta_shrinkage", $("beta_shrinkage").value);
+    fd.append("E", $("E").value);
+    fd.append("k", $("k").value);
+    fd.append("nu", $("nu").value);
+    fd.append("alpha", $("alpha").value);
+    fd.append("beta_shrinkage", $("beta_shrinkage").value);
 
-    formData.append("fatigue_A", $("fatigue_A").value);
-    formData.append("fatigue_m", $("fatigue_m").value);
-    formData.append("fatigue_sigma_ref", $("fatigue_sigma_ref").value);
+    fd.append("fatigue_A", $("fatigue_A").value);
+    fd.append("fatigue_m", $("fatigue_m").value);
+    fd.append("fatigue_sigma_ref", $("fatigue_sigma_ref").value);
 
     const weatherMode = document.querySelector('[name="weather_mode"]:checked').value;
-    formData.append("weather_mode", weatherMode);
+    fd.append("weather_mode", weatherMode);
 
     if (weatherMode === "synthetic") {
-      formData.append("sim_days", $("sim_days").value);
-      formData.append("daily_steps", $("daily_steps").value);
-      formData.append("mean_temp", $("mean_temp").value);
-      formData.append("amp_temp", $("amp_temp").value);
-      formData.append("mean_RH", $("mean_RH").value);
-      formData.append("amp_RH", $("amp_RH").value);
+      fd.append("sim_days", $("sim_days").value);
+      fd.append("daily_steps", $("daily_steps").value);
+      fd.append("mean_temp", $("mean_temp").value);
+      fd.append("amp_temp", $("amp_temp").value);
+      fd.append("mean_RH", $("mean_RH").value);
+      fd.append("amp_RH", $("amp_RH").value);
     } else if (weatherMode === "openmeteo") {
-      formData.append("lat", $("lat").value);
-      formData.append("lon", $("lon").value);
-      formData.append("days", $("days").value);
+      fd.append("lat", $("lat").value);
+      fd.append("lon", $("lon").value);
+      fd.append("days", $("days").value);
     } else if (weatherMode === "csv") {
       const file = $("weather_csv_input").files[0];
-      if (file) formData.append("weather_csv", file, file.name);
-      formData.append("sim_days", $("sim_days").value);
-      formData.append("daily_steps", $("daily_steps").value);
-      formData.append("mean_temp", $("mean_temp").value);
-      formData.append("amp_temp", $("amp_temp").value);
-      formData.append("mean_RH", $("mean_RH").value);
-      formData.append("amp_RH", $("amp_RH").value);
+      if (file) fd.append("weather_csv", file, file.name);
+      fd.append("sim_days", $("sim_days").value);
+      fd.append("daily_steps", $("daily_steps").value);
+      fd.append("mean_temp", $("mean_temp").value);
+      fd.append("amp_temp", $("amp_temp").value);
+      fd.append("mean_RH", $("mean_RH").value);
+      fd.append("amp_RH", $("amp_RH").value);
     }
 
     const loadMode = document.querySelector('[name="load_mode"]:checked').value;
-    formData.append("load_mode", loadMode);
+    fd.append("load_mode", loadMode);
 
     if (loadMode === "constant") {
-      formData.append("wheel_load", $("wheel_load").value);
+      fd.append("wheel_load", $("wheel_load").value);
     } else if (loadMode === "csv") {
       const file = $("load_csv_input").files[0];
-      if (file) formData.append("load_csv", file, file.name);
-      formData.append("wheel_load", $("wheel_load").value);
+      if (file) fd.append("load_csv", file, file.name);
+      fd.append("wheel_load", $("wheel_load").value);
     }
 
-    const res = await fetch("/api/simulate", {
-      method: "POST",
-      body: formData,
-    });
-
+    const res = await fetch("/api/simulate", { method: "POST", body: fd });
     const data = await res.json();
 
-    if (!data.ok) {
-      throw new Error(data.error || "Simulation failed");
-    }
+    if (!data.ok) throw new Error(data.error || "Simulation failed");
 
     simData = data;
     renderResults(data);
@@ -177,25 +213,21 @@ runBtn.addEventListener("click", async () => {
   }
 });
 
-/* ─── Render Results ─────────────────────────── */
 function renderResults(data) {
-  const { plots, cycles, summary } = data;
+  const { charts, cycles, summary } = data;
 
-  renderedTabs = {};
+  // Destroy any existing chart instances
+  Object.keys(chartInstances).forEach((k) => {
+    try { chartInstances[k].destroy(); } catch (e) {}
+  });
+  chartInstances = {};
 
   statusText.textContent = "Complete";
   samplesText.textContent = summary.samples.toLocaleString();
   damageText.textContent = summary.totalDamage.toExponential(4);
 
-  // Only render the visible (timeseries) chart; rest are lazy-rendered on tab click
-  const tsChart = $("chart-timeseries");
-  if (tsChart && plots.timeSeries) {
-    Plotly.newPlot(tsChart, plots.timeSeries.data, plots.timeSeries.layout, {
-      displaylogo: false,
-      modeBarButtonsToRemove: ["lasso2d", "select2d"],
-    });
-    renderedTabs["timeseries"] = true;
-  }
+  // Render visible timeseries subplots immediately
+  renderTSSubplots(charts.timeSeries);
 
   // Cycles table
   const tbody = $("cyclesBody");
@@ -214,7 +246,6 @@ function renderResults(data) {
     `).join("");
   }
 
-  // Summary cards
   const grid = $("summaryGrid");
   grid.innerHTML = `
     <div class="summary-card accent">
@@ -246,7 +277,6 @@ function renderResults(data) {
   exportBtn.disabled = false;
 }
 
-/* ─── Export CSV ────────────────────────────── */
 exportBtn.addEventListener("click", async () => {
   if (!simData || !simData.cycles || simData.cycles.length === 0) return;
 

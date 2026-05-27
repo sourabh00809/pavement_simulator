@@ -22,7 +22,7 @@ FRONTEND = HERE.parent / "frontend"
 
 app = FastAPI(title="Pavement Fatigue Simulator")
 
-# ─── Plot helpers ─────────────────────────────
+# ─── Chart.js JSON helpers ─────────────────────
 
 COLORS = {
     "blue": "#3b82f6",
@@ -34,114 +34,80 @@ COLORS = {
     "dark": "#0f172a",
 }
 
+DASH_MAP = {
+    None: [],
+    "dash": [5, 5],
+    "dot": [2, 2],
+    "dashdot": [5, 2, 2, 2],
+}
+
 
 def _tl(x):
-    """Convert numpy array to list if needed."""
     return x.tolist() if isinstance(x, np.ndarray) else x
 
 
-def _ts_json(r):
-    """Build time series subplot JSON directly (no Plotly figure objects)."""
+def _chart_data(r, traces):
+    """Build Chart.js {labels, datasets} dict."""
     t = _tl(r["t"])
-    data = [
-        {"x": t, "y": _tl(r["T_air"]), "type": "scatter", "mode": "lines",
-         "name": "T_air", "line": {"color": COLORS["red"], "width": 1.5},
-         "xaxis": "x", "yaxis": "y"},
-        {"x": t, "y": _tl(r["T_top"]), "type": "scatter", "mode": "lines",
-         "name": "T_top", "line": {"color": COLORS["orange"], "width": 1.5},
-         "xaxis": "x", "yaxis": "y"},
-        {"x": t, "y": _tl(r["T_bottom"]), "type": "scatter", "mode": "lines",
-         "name": "T_bottom", "line": {"color": COLORS["blue"], "width": 1.5},
-         "xaxis": "x", "yaxis": "y"},
-        {"x": t, "y": _tl(r["RH"]), "type": "scatter", "mode": "lines",
-         "name": "RH (air)", "line": {"color": COLORS["blue"], "width": 1.5},
-         "xaxis": "x2", "yaxis": "y2"},
-        {"x": t, "y": _tl(r["M_top"]), "type": "scatter", "mode": "lines",
-         "name": "M_top", "line": {"color": COLORS["green"], "width": 1.5},
-         "xaxis": "x2", "yaxis": "y2"},
-        {"x": t, "y": _tl(r["M_bottom"]), "type": "scatter", "mode": "lines",
-         "name": "M_bottom", "line": {"color": COLORS["teal"], "width": 1.5},
-         "xaxis": "x2", "yaxis": "y2"},
-        {"x": t, "y": _tl(r["loads_N"]), "type": "scatter", "mode": "lines",
-         "name": "Load (N)", "line": {"color": COLORS["purple"], "width": 1.5},
-         "xaxis": "x3", "yaxis": "y3"},
-        {"x": t, "y": _tl(r["sigma_total"]), "type": "scatter", "mode": "lines",
-         "name": "sigma_total", "line": {"color": COLORS["dark"], "width": 2},
-         "xaxis": "x4", "yaxis": "y4"},
-        {"x": t, "y": _tl(r["sigma_load_only"]), "type": "scatter", "mode": "lines",
-         "name": "sigma_load", "line": {"color": COLORS["red"], "width": 1.5, "dash": "dash"},
-         "xaxis": "x4", "yaxis": "y4"},
-        {"x": t, "y": _tl(r["sigma_thermal"]), "type": "scatter", "mode": "lines",
-         "name": "sigma_thermal", "line": {"color": COLORS["orange"], "width": 1.5, "dash": "dot"},
-         "xaxis": "x4", "yaxis": "y4"},
-        {"x": t, "y": _tl(r["sigma_moisture"]), "type": "scatter", "mode": "lines",
-         "name": "sigma_moisture", "line": {"color": COLORS["green"], "width": 1.5, "dash": "dashdot"},
-         "xaxis": "x4", "yaxis": "y4"},
-    ]
-    layout = {
-        "xaxis": {"anchor": "y", "domain": [0, 1], "matches": "x4",
-                   "showticklabels": False, "title": {"text": ""}},
-        "yaxis": {"anchor": "x", "domain": [0.742, 1], "title": {"text": "Temp (C)"}},
-        "xaxis2": {"anchor": "y2", "domain": [0, 1], "matches": "x4",
-                    "showticklabels": False, "title": {"text": ""}},
-        "yaxis2": {"anchor": "x2", "domain": [0.494, 0.724], "title": {"text": "Moisture"}},
-        "xaxis3": {"anchor": "y3", "domain": [0, 1], "matches": "x4",
-                    "showticklabels": False, "title": {"text": ""}},
-        "yaxis3": {"anchor": "x3", "domain": [0.247, 0.477], "title": {"text": "Load (N)"}},
-        "xaxis4": {"anchor": "y4", "domain": [0, 1], "title": {"text": "Time (days)"}},
-        "yaxis4": {"anchor": "x4", "domain": [0, 0.23], "title": {"text": "Stress (MPa)"}},
-        "legend": {"orientation": "h", "y": 1.03, "font": {"size": 10}},
-        "height": 550,
-        "margin": {"l": 50, "r": 20, "t": 30, "b": 50},
-        "hovermode": "x unified",
-    }
-    return {"data": data, "layout": layout}
+    datasets = []
+    for key, name, color, dash in traces:
+        d = {
+            "label": name,
+            "data": _tl(r[key]),
+            "borderColor": color,
+            "borderWidth": 1.5 if key != "sigma_total" else 2,
+            "pointRadius": 0,
+            "fill": False,
+        }
+        bd = DASH_MAP.get(dash)
+        if bd:
+            d["borderDash"] = bd
+        datasets.append(d)
+    return {"labels": t, "datasets": datasets}
 
 
-def _single_json(r, title, ylabel, traces):
-    """Build single-chart JSON directly (no Plotly figure objects)."""
-    t = _tl(r["t"])
-    data = []
-    for k, name, color, dash in traces:
-        trace = {"x": t, "y": _tl(r[k]), "type": "scatter", "mode": "lines",
-                 "name": name, "line": {"color": color, "width": 1.5}}
-        if dash:
-            trace["line"]["dash"] = dash
-        data.append(trace)
-    layout = {
-        "title": {"text": title},
-        "xaxis": {"title": {"text": "Time (days)"}},
-        "yaxis": {"title": {"text": ylabel}},
-        "height": 400,
-        "margin": {"l": 50, "r": 20, "t": 40, "b": 50},
-        "hovermode": "x unified",
-        "legend": {"orientation": "h", "y": 1.02},
-    }
-    return {"data": data, "layout": layout}
-
-
-def _build_plots(res):
+def _build_charts(r):
     return {
-        "timeSeries": _ts_json(res),
-        "temperature": _single_json(res,
-            "Temperature Time Series", "Temp (C)",
-            [("T_air", "T_air", COLORS["red"], None),
-             ("T_top", "T_top", COLORS["orange"], None),
-             ("T_bottom", "T_bottom", COLORS["blue"], None)]),
-        "moisture": _single_json(res,
-            "Moisture / Relative Humidity", "Moisture",
-            [("RH", "RH (air)", COLORS["blue"], None),
-             ("M_top", "M_top", COLORS["green"], None),
-             ("M_bottom", "M_bottom", COLORS["teal"], None)]),
-        "load": _single_json(res,
-            "Vehicle Load History", "Load (N)",
-            [("loads_N", "Load (N)", COLORS["purple"], None)]),
-        "stress": _single_json(res,
-            "Stress Components", "Stress (MPa)",
-            [("sigma_total", "sigma_total", COLORS["dark"], None),
-             ("sigma_load_only", "sigma_load", COLORS["red"], "dash"),
-             ("sigma_thermal", "sigma_thermal", COLORS["orange"], "dot"),
-             ("sigma_moisture", "sigma_moisture", COLORS["green"], "dashdot")]),
+        "timeSeries": {
+            "temperature": _chart_data(r, [
+                ("T_air", "T_air", COLORS["red"], None),
+                ("T_top", "T_top", COLORS["orange"], None),
+                ("T_bottom", "T_bottom", COLORS["blue"], None),
+            ]),
+            "moisture": _chart_data(r, [
+                ("RH", "RH (air)", COLORS["blue"], None),
+                ("M_top", "M_top", COLORS["green"], None),
+                ("M_bottom", "M_bottom", COLORS["teal"], None),
+            ]),
+            "load": _chart_data(r, [
+                ("loads_N", "Load (N)", COLORS["purple"], None),
+            ]),
+            "stress": _chart_data(r, [
+                ("sigma_total", "sigma_total", COLORS["dark"], None),
+                ("sigma_load_only", "sigma_load", COLORS["red"], "dash"),
+                ("sigma_thermal", "sigma_thermal", COLORS["orange"], "dot"),
+                ("sigma_moisture", "sigma_moisture", COLORS["green"], "dashdot"),
+            ]),
+        },
+        "temperature": _chart_data(r, [
+            ("T_air", "T_air", COLORS["red"], None),
+            ("T_top", "T_top", COLORS["orange"], None),
+            ("T_bottom", "T_bottom", COLORS["blue"], None),
+        ]),
+        "moisture": _chart_data(r, [
+            ("RH", "RH (air)", COLORS["blue"], None),
+            ("M_top", "M_top", COLORS["green"], None),
+            ("M_bottom", "M_bottom", COLORS["teal"], None),
+        ]),
+        "load": _chart_data(r, [
+            ("loads_N", "Load (N)", COLORS["purple"], None),
+        ]),
+        "stress": _chart_data(r, [
+            ("sigma_total", "sigma_total", COLORS["dark"], None),
+            ("sigma_load_only", "sigma_load", COLORS["red"], "dash"),
+            ("sigma_thermal", "sigma_thermal", COLORS["orange"], "dot"),
+            ("sigma_moisture", "sigma_moisture", COLORS["green"], "dashdot"),
+        ]),
     }
 
 
@@ -238,7 +204,7 @@ async def simulate(
             except Exception:
                 pass
 
-        plots = _build_plots(res)
+        charts = _build_charts(res)
 
         cycles = [{
             "range": c["range"], "mean": c["mean"],
@@ -256,7 +222,7 @@ async def simulate(
             "timeSpan": float(res["t"][-1]),
         }
 
-        body = json.dumps({"ok": True, "plots": plots, "cycles": cycles,
+        body = json.dumps({"ok": True, "charts": charts, "cycles": cycles,
                            "summary": summary}, cls=_NumpyEncoder)
         return Response(content=body, media_type="application/json")
 

@@ -389,7 +389,10 @@ input[type="number"] { font-family: var(--font-mono); }
 .tab-content.active { display: block; }
 
 /* ─── Charts ────────────────────────────────── */
-.chart { width: 100%; min-height: 450px; }
+.chart { width: 100%; min-height: 400px; }
+.chart.single-chart { min-height: 500px; }
+.chart-grid { display: flex; flex-direction: column; gap: 2px; padding: 8px; }
+.chart-panel { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
 
 /* ─── Data Table ───────────────────────────── */
 .table-wrap {
