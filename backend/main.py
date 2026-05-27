@@ -94,7 +94,6 @@ def _ts_json(r):
         "height": 550,
         "margin": {"l": 50, "r": 20, "t": 30, "b": 50},
         "hovermode": "x unified",
-        "template": "plotly_white",
     }
     return {"data": data, "layout": layout}
 
@@ -117,7 +116,6 @@ def _single_json(r, title, ylabel, traces):
         "margin": {"l": 50, "r": 20, "t": 40, "b": 50},
         "hovermode": "x unified",
         "legend": {"orientation": "h", "y": 1.02},
-        "template": "plotly_white",
     }
     return {"data": data, "layout": layout}
 

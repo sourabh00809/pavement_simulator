@@ -1,6 +1,7 @@
 /* ─── State ──────────────────────────────────── */
 let simData = null;
 let isLoading = false;
+let renderedTabs = {};
 
 /* ─── DOM refs ───────────────────────────────── */
 const $ = (id) => document.getElementById(id);
@@ -12,6 +13,14 @@ const samplesText = $("samplesText");
 const damageText = $("damageText");
 const errorBox = $("errorBox");
 const tabBar = $("tabBar");
+
+const TAB_CHART_MAP = {
+  timeseries: "chart-timeseries",
+  temperature: "chart-temperature",
+  moisture: "chart-moisture",
+  load: "chart-load",
+  stress: "chart-stress",
+};
 
 /* ─── Radio pill toggle ─────────────────────── */
 document.querySelectorAll(".radio-group").forEach((group) => {
@@ -55,18 +64,28 @@ tabBar.addEventListener("click", (e) => {
   const tab = e.target.closest(".tab");
   if (!tab) return;
 
+  const tabName = tab.dataset.tab;
+
   tabBar.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
   tab.classList.add("active");
 
   document.querySelectorAll(".tab-content").forEach((tc) => tc.classList.remove("active"));
-  const target = $("tab-" + tab.dataset.tab);
+  const target = $("tab-" + tabName);
   if (target) target.classList.add("active");
 
-  // Resize plotly chart when switching to it
-  const chartId = "chart-" + tab.dataset.tab;
+  // Render chart lazily if not yet rendered
+  const chartId = TAB_CHART_MAP[tabName];
   const chartDiv = $(chartId);
-  if (chartDiv && chartDiv.data) {
-    Plotly.Plots.resize(chartDiv);
+  if (chartDiv && simData && simData.plots && simData.plots[tabName]) {
+    if (!renderedTabs[tabName]) {
+      Plotly.newPlot(chartDiv, simData.plots[tabName].data, simData.plots[tabName].layout, {
+        displaylogo: false,
+        modeBarButtonsToRemove: ["lasso2d", "select2d"],
+      });
+      renderedTabs[tabName] = true;
+    } else {
+      Plotly.Plots.resize(chartDiv);
+    }
   }
 });
 
@@ -82,25 +101,21 @@ runBtn.addEventListener("click", async () => {
   try {
     const formData = new FormData();
 
-    // Slab
     formData.append("slab_length", $("slab_length").value);
     formData.append("slab_width", $("slab_width").value);
     formData.append("h", $("h").value);
     formData.append("contact_radius", $("contact_radius").value);
 
-    // Material
     formData.append("E", $("E").value);
     formData.append("k", $("k").value);
     formData.append("nu", $("nu").value);
     formData.append("alpha", $("alpha").value);
     formData.append("beta_shrinkage", $("beta_shrinkage").value);
 
-    // Fatigue
     formData.append("fatigue_A", $("fatigue_A").value);
     formData.append("fatigue_m", $("fatigue_m").value);
     formData.append("fatigue_sigma_ref", $("fatigue_sigma_ref").value);
 
-    // Weather
     const weatherMode = document.querySelector('[name="weather_mode"]:checked').value;
     formData.append("weather_mode", weatherMode);
 
@@ -126,7 +141,6 @@ runBtn.addEventListener("click", async () => {
       formData.append("amp_RH", $("amp_RH").value);
     }
 
-    // Load
     const loadMode = document.querySelector('[name="load_mode"]:checked').value;
     formData.append("load_mode", loadMode);
 
@@ -167,17 +181,21 @@ runBtn.addEventListener("click", async () => {
 function renderResults(data) {
   const { plots, cycles, summary } = data;
 
-  // Status
+  renderedTabs = {};
+
   statusText.textContent = "Complete";
   samplesText.textContent = summary.samples.toLocaleString();
   damageText.textContent = summary.totalDamage.toExponential(4);
 
-  // Plots
-  renderPlot("chart-timeseries", plots.timeSeries);
-  renderPlot("chart-temperature", plots.temperature);
-  renderPlot("chart-moisture", plots.moisture);
-  renderPlot("chart-load", plots.load);
-  renderPlot("chart-stress", plots.stress);
+  // Only render the visible (timeseries) chart; rest are lazy-rendered on tab click
+  const tsChart = $("chart-timeseries");
+  if (tsChart && plots.timeSeries) {
+    Plotly.newPlot(tsChart, plots.timeSeries.data, plots.timeSeries.layout, {
+      displaylogo: false,
+      modeBarButtonsToRemove: ["lasso2d", "select2d"],
+    });
+    renderedTabs["timeseries"] = true;
+  }
 
   // Cycles table
   const tbody = $("cyclesBody");
@@ -225,22 +243,7 @@ function renderResults(data) {
     </div>
   `;
 
-  // Enable export
   exportBtn.disabled = false;
-
-  // First tab (timeseries) is already active in HTML
-}
-
-/* ─── Render Plotly Chart ────────────────────── */
-function renderPlot(containerId, figure) {
-  const el = $(containerId);
-  if (!el) return;
-  Plotly.react(el, figure.data, figure.layout, {
-    responsive: true,
-    displaylogo: false,
-    modeBarButtonsToRemove: ["lasso2d", "select2d"],
-  });
-  el.data = true; // mark for resize
 }
 
 /* ─── Export CSV ────────────────────────────── */
