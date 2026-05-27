@@ -9,6 +9,8 @@ pinned: false
 
 # Pavement Fatigue Simulator
 
+**Website:** [sourabh00809-pavement-simulator.hf.space](https://sourabh00809-pavement-simulator.hf.space/)
+
 Rainflow-based fatigue analysis of rigid concrete pavements. Uses Westergaard edge stress theory with thermal, moisture, and traffic loading. Supports synthetic weather, CSV upload, and real-time data from the Open-Meteo API.
 
 ## Workflow
@@ -17,7 +19,7 @@ Rainflow-based fatigue analysis of rigid concrete pavements. Uses Westergaard ed
 2. **Run simulation** -- the FastAPI backend computes hourly/daily stress time series using the core engine (`src/engine.py`).
 3. **Rainflow counting** -- stress cycles are extracted via ASTM E1049 rainflow algorithm.
 4. **Fatigue damage** -- Palmgren-Miner linear damage rule with an SN curve.
-5. **Visualize** -- interactive zoom/pan charts (Chart.js) for temperature, moisture, load, stress, and cycle distribution.
+5. **Visualize** -- interactive charts (Chart.js) for temperature, moisture, load, stress, and cycle distribution.
 6. **Export** -- rainflow cycle data as CSV.
 
 ## Architecture
@@ -32,13 +34,3 @@ src/weather_fetcher.py  Open-Meteo archive + forecast API integration
 Dockerfile              Hugging Face Spaces container definition
 requirements.txt        Python dependencies
 ```
-
-## Deployment
-
-Deployed on Hugging Face Spaces with Docker SDK:
-
-```
-sdk: docker
-```
-
-Push to the `main` branch of the associated HF Space to trigger a Docker build.
