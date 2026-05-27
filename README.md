@@ -1,6 +1,5 @@
 ---
 title: Pavement Fatigue Simulator
-emoji: 
 colorFrom: blue
 colorTo: indigo
 sdk: docker
